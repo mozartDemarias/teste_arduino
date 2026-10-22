@@ -1,0 +1,220 @@
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
+#define OLED_RESET -1
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+
+#define MAX_LEVEL 100
+
+// Pinos de hardware
+int ledPins[] = {13, 12, 11, 10}; 
+int buttonPins[] = {5, 4, 3, 2};  
+int buzzerPin = 8;
+
+// Frequências sonoras: Vermelho (300Hz), Azul (400Hz), Amarelo (500Hz), Verde (600Hz)
+int tones[] = {300, 400, 500, 600}; 
+
+// Variáveis do jogo
+int scores[4] = {0, 0, 0, 0};
+int currentPlayer = 0; // Vai de 0 a 3 (Jogadores 1 a 4)
+int gameSequence[MAX_LEVEL];
+int currentLevel = 0;
+
+void setup() {
+  for (int i = 0; i < 4; i++) {
+    pinMode(ledPins[i], OUTPUT);
+    pinMode(buttonPins[i], INPUT_PULLUP);
+  }
+  pinMode(buzzerPin, OUTPUT);
+  
+  if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+    for(;;); 
+  }
+  
+  randomSeed(analogRead(A0)); 
+  
+  telaApresentacao();
+  delay(3000);
+}
+
+void loop() {
+  if (currentPlayer > 3) {
+    mostrarVencedor();
+    return;
+  }
+
+  if (currentLevel == 0) {
+    gameSequence[0] = random(0, 4);
+    currentLevel = 1;
+    atualizarDisplay("PREPARE-SE!");
+    delay(1500);
+  } else {
+    gameSequence[currentLevel - 1] = random(0, 4);
+  }
+  
+  atualizarDisplay("SUA VEZ!");
+  playSequence();
+  
+  if (!readPlayer()) {
+    handleElimination();
+  } else {
+    scores[currentPlayer] = currentLevel;
+    currentLevel++;
+    atualizarDisplay("CORRETO!");
+    delay(800);
+  }
+}
+
+void playSequence() {
+  for (int i = 0; i < currentLevel; i++) {
+    int color = gameSequence[i];
+    digitalWrite(ledPins[color], HIGH);
+    tone(buzzerPin, tones[color]); // Toca o som da cor
+    delay(400);
+    
+    digitalWrite(ledPins[color], LOW);
+    noTone(buzzerPin); // Para o som
+    delay(200);
+  }
+}
+
+bool readPlayer() {
+  for (int i = 0; i < currentLevel; i++) {
+    int expectedColor = gameSequence[i];
+    bool pressed = false;
+    
+    while (!pressed) {
+      for (int j = 0; j < 4; j++) {
+        if (digitalRead(buttonPins[j]) == LOW) {
+          
+          digitalWrite(ledPins[j], HIGH); 
+          tone(buzzerPin, tones[j]); // Toca o som do botão pressionado
+          
+          while (digitalRead(buttonPins[j]) == LOW) { delay(10); }
+          
+          digitalWrite(ledPins[j], LOW);
+          noTone(buzzerPin); // Para o som ao soltar o botão
+          
+          if (j == expectedColor) {
+            pressed = true;
+            break;
+          } else {
+            return false; 
+          }
+        }
+      }
+      delay(10);
+    }
+  }
+  return true;
+}
+
+void handleElimination() {
+  tone(buzzerPin, 150); // Som grave contínuo de erro
+  
+  for(int i=0; i<3; i++) {
+    for(int j=0; j<4; j++) digitalWrite(ledPins[j], HIGH);
+    delay(200);
+    for(int j=0; j<4; j++) digitalWrite(ledPins[j], LOW);
+    delay(200);
+  }
+  
+  noTone(buzzerPin); // Desliga o som de erro
+  
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+  display.setCursor(0, 10);
+  display.print("JOGADOR "); 
+  display.print(currentPlayer + 1);
+  display.setCursor(0, 30);
+  display.setTextSize(2);
+  display.print("ELIMINADO");
+  display.display();
+  delay(3000);
+  
+  currentPlayer++;
+  currentLevel = 0; 
+}
+
+void atualizarDisplay(String statusMsg) {
+  display.clearDisplay();
+  
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+  display.setCursor(0, 0);
+  display.print("VEZ DO JOGADOR "); 
+  display.print(currentPlayer + 1);
+  
+  display.setCursor(0, 20);
+  display.setTextSize(2);
+  display.print("Pts: "); 
+  display.print(scores[currentPlayer]);
+  
+  display.setCursor(0, 50);
+  display.setTextSize(1);
+  display.print(statusMsg);
+  
+  display.display();
+}
+
+void telaApresentacao() {
+  display.clearDisplay();
+  display.setTextSize(2);
+  display.setTextColor(WHITE);
+  display.setCursor(15, 20);
+  display.print("GENIOS");
+  display.setTextSize(1);
+  display.setCursor(10, 45);
+  display.print("Desafio 4 Jogadores");
+  display.display();
+}
+
+void mostrarVencedor() {
+  int maxScore = -1;
+  int winner = -1;
+  bool empate = false;
+  
+  for(int i = 0; i < 4; i++){
+    if(scores[i] > maxScore) { 
+      maxScore = scores[i]; 
+      winner = i;
+      empate = false;
+    } else if (scores[i] == maxScore && maxScore > 0) {
+      empate = true;
+    }
+  }
+  
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+  display.setCursor(0, 0);
+  display.print("FIM DE JOGO!");
+  
+  display.setCursor(0, 25);
+  display.setTextSize(2);
+  
+  if (empate || maxScore == 0) {
+    display.print("EMPATE!");
+  } else {
+    display.print("VENCEU: J"); 
+    display.print(winner + 1);
+  }
+  
+  display.setTextSize(1);
+  display.setCursor(0, 50);
+  display.print("Maior Pontuacao: "); 
+  display.print(maxScore);
+  display.display();
+  
+  delay(8000);
+  
+  currentPlayer = 0;
+  currentLevel = 0;
+  for(int i = 0; i < 4; i++) scores[i] = 0;
+  telaApresentacao();
+  delay(3000);
+}
