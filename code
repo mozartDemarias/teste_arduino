@@ -59,17 +59,13 @@ void loop() {
   } else {
     scores[currentPlayer] = currentLevel;
     
-    // Verifica se o jogador completou a 10ª rodada
+    // Verifica se completou a 10ª rodada
     if (currentLevel == 10) {
       atualizarDisplay("COMPLETOU!");
-      
-      // Som de vitória do turno
       tone(buzzerPin, 800); delay(200);
       tone(buzzerPin, 1000); delay(400);
       noTone(buzzerPin);
-      
       delay(2000);
-      
       currentPlayer++;
       currentLevel = 0; 
     } else {
@@ -105,10 +101,14 @@ bool readPlayer() {
           digitalWrite(ledPins[j], HIGH); 
           tone(buzzerPin, tones[j]);
           
+          // Aguarda o jogador soltar o botão
           while (digitalRead(buttonPins[j]) == LOW) { delay(10); }
           
           digitalWrite(ledPins[j], LOW);
           noTone(buzzerPin);
+          
+          // ANTI-BOUNCING: Atraso de 150ms para ignorar vibrações mecânicas da mola
+          delay(150);
           
           if (j == expectedColor) {
             pressed = true;
@@ -154,22 +154,18 @@ void handleElimination() {
 
 void atualizarDisplay(String statusMsg) {
   display.clearDisplay();
-  
   display.setTextSize(1);
   display.setTextColor(WHITE);
   display.setCursor(0, 0);
   display.print("VEZ DO JOGADOR "); 
   display.print(currentPlayer + 1);
-  
   display.setCursor(0, 20);
   display.setTextSize(2);
   display.print("Pts: "); 
   display.print(scores[currentPlayer]);
-  
   display.setCursor(0, 50);
   display.setTextSize(1);
   display.print(statusMsg);
-  
   display.display();
 }
 
@@ -177,17 +173,13 @@ void esperarInicio() {
   display.clearDisplay();
   display.setTextSize(1);
   display.setTextColor(WHITE);
-  
   display.setCursor(30, 0);
   display.print("GENIOS");
-  
   display.setCursor(0, 25);
   display.print("Aperte o botao");
-  
   display.setCursor(0, 40);
   display.setTextSize(2);
   display.print("VERMELHO");
-  
   display.display();
 
   while(digitalRead(buttonPins[0]) == HIGH) {
@@ -225,7 +217,6 @@ void mostrarVencedor() {
   display.setTextColor(WHITE);
   display.setCursor(0, 0);
   display.print("FIM DE JOGO!");
-  
   display.setCursor(0, 25);
   display.setTextSize(2);
   
