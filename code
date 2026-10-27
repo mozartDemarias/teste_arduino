@@ -29,7 +29,8 @@ void setup() {
   pinMode(buzzerPin, OUTPUT);
   
   if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
-    for(;;); 
+    // TRAVA DESATIVADA: O código avança mesmo sem detetar o display
+    // for(;;); 
   }
   
   randomSeed(analogRead(A0)); 
@@ -162,96 +163,4 @@ void atualizarDisplay(String statusMsg) {
   display.print(scores[currentPlayer]);
   display.setCursor(0, 50);
   display.setTextSize(1);
-  display.print(statusMsg);
-  display.display();
-}
-
-void esperarInicio() {
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(WHITE);
-  display.setCursor(40, 0);
-  display.print("GENIOS");
-  
-  display.setCursor(0, 25);
-  display.print("Aperte QUALQUER");
-  
-  display.setCursor(0, 40);
-  display.print("botao p/ comecar");
-  
-  display.display();
-
-  int pressedButton = -1;
-  
-  // Fica preso no loop até que algum botão seja apertado (vá para LOW)
-  while(pressedButton == -1) {
-    for(int i = 0; i < 4; i++) {
-      if(digitalRead(buttonPins[i]) == LOW) {
-        pressedButton = i;
-        break;
-      }
-    }
-    delay(10);
-  }
-  
-  // Feedback do botão específico que o jogador escolheu apertar
-  digitalWrite(ledPins[pressedButton], HIGH);
-  tone(buzzerPin, tones[pressedButton]);
-  
-  // Aguarda o jogador soltar o botão de início para não atrapalhar o jogo
-  while(digitalRead(buttonPins[pressedButton]) == LOW) {
-    delay(10);
-  }
-  
-  digitalWrite(ledPins[pressedButton], LOW);
-  noTone(buzzerPin);
-  
-  display.clearDisplay();
-  display.display();
-  delay(1000);
-}
-
-void mostrarVencedor() {
-  int maxScore = -1;
-  int winner = -1;
-  bool empate = false;
-  
-  for(int i = 0; i < 4; i++){
-    if(scores[i] > maxScore) { 
-      maxScore = scores[i]; 
-      winner = i;
-      empate = false;
-    } else if (scores[i] == maxScore && maxScore > 0) {
-      empate = true;
-    }
-  }
-  
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(WHITE);
-  display.setCursor(0, 0);
-  display.print("FIM DE JOGO!");
-  display.setCursor(0, 25);
-  display.setTextSize(2);
-  
-  if (empate || maxScore == 0) {
-    display.print("EMPATE!");
-  } else {
-    display.print("VENCEU: J"); 
-    display.print(winner + 1);
-  }
-  
-  display.setTextSize(1);
-  display.setCursor(0, 50);
-  display.print("Maior Pontuacao: "); 
-  display.print(maxScore);
-  display.display();
-  
-  delay(8000);
-  
-  currentPlayer = 0;
-  currentLevel = 0;
-  for(int i = 0; i < 4; i++) scores[i] = 0;
-  
-  esperarInicio(); 
-}
+  display
