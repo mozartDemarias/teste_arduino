@@ -59,7 +59,6 @@ void loop() {
   } else {
     scores[currentPlayer] = currentLevel;
     
-    // Verifica se completou a 10ª rodada
     if (currentLevel == 10) {
       atualizarDisplay("COMPLETOU!");
       tone(buzzerPin, 800); delay(200);
@@ -101,14 +100,12 @@ bool readPlayer() {
           digitalWrite(ledPins[j], HIGH); 
           tone(buzzerPin, tones[j]);
           
-          // Aguarda o jogador soltar o botão
           while (digitalRead(buttonPins[j]) == LOW) { delay(10); }
           
           digitalWrite(ledPins[j], LOW);
           noTone(buzzerPin);
           
-          // ANTI-BOUNCING: Atraso de 150ms para ignorar vibrações mecânicas da mola
-          delay(150);
+          delay(150); // Anti-bouncing
           
           if (j == expectedColor) {
             pressed = true;
@@ -173,23 +170,40 @@ void esperarInicio() {
   display.clearDisplay();
   display.setTextSize(1);
   display.setTextColor(WHITE);
-  display.setCursor(30, 0);
+  display.setCursor(40, 0);
   display.print("GENIOS");
+  
   display.setCursor(0, 25);
-  display.print("Aperte o botao");
+  display.print("Aperte QUALQUER");
+  
   display.setCursor(0, 40);
-  display.setTextSize(2);
-  display.print("VERMELHO");
+  display.print("botao p/ comecar");
+  
   display.display();
 
-  while(digitalRead(buttonPins[0]) == HIGH) {
-    delay(50);
+  int pressedButton = -1;
+  
+  // Fica preso no loop até que algum botão seja apertado (vá para LOW)
+  while(pressedButton == -1) {
+    for(int i = 0; i < 4; i++) {
+      if(digitalRead(buttonPins[i]) == LOW) {
+        pressedButton = i;
+        break;
+      }
+    }
+    delay(10);
   }
   
-  digitalWrite(ledPins[0], HIGH);
-  tone(buzzerPin, tones[0]);
-  delay(300);
-  digitalWrite(ledPins[0], LOW);
+  // Feedback do botão específico que o jogador escolheu apertar
+  digitalWrite(ledPins[pressedButton], HIGH);
+  tone(buzzerPin, tones[pressedButton]);
+  
+  // Aguarda o jogador soltar o botão de início para não atrapalhar o jogo
+  while(digitalRead(buttonPins[pressedButton]) == LOW) {
+    delay(10);
+  }
+  
+  digitalWrite(ledPins[pressedButton], LOW);
   noTone(buzzerPin);
   
   display.clearDisplay();
