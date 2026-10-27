@@ -1,0 +1,19 @@
+// Pinos dos LEDs (Vermelho, Azul, Amarelo, Verde)
+int ledPins[] = {13, 12, 11, 10}; 
+
+void setup() {
+  // Configura os 4 pinos dos LEDs como saída de energia
+  for (int i = 0; i < 4; i++) {
+    pinMode(ledPins[i], OUTPUT);
+  }
+}
+
+void loop() {
+  // Liga e desliga cada LED em sequência
+  for (int i = 0; i < 4; i++) {
+    digitalWrite(ledPins[i], HIGH); // Acende o LED
+    delay(500);                     // Mantém aceso por meio segundo
+    digitalWrite(ledPins[i], LOW);  // Apaga o LED
+    delay(200);                     // Pausa rápida antes do próximo
+  }
+}
