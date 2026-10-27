@@ -1,0 +1,27 @@
+// Pinos dos Botões (Vermelho, Azul, Amarelo, Verde)
+int buttonPins[] = {5, 4, 3, 2};  
+
+// Pinos dos LEDs (Vermelho, Azul, Amarelo, Verde)
+int ledPins[] = {13, 12, 11, 10}; 
+
+void setup() {
+  // Configura cada pino
+  for (int i = 0; i < 4; i++) {
+    pinMode(buttonPins[i], INPUT_PULLUP); // Botões ativam com LOW
+    pinMode(ledPins[i], OUTPUT);          // LEDs ativam com HIGH
+  }
+}
+
+void loop() {
+  // Lê os 4 botões repetidamente
+  for (int i = 0; i < 4; i++) {
+    
+    // Como usamos INPUT_PULLUP, LOW significa que o botão está apertado
+    if (digitalRead(buttonPins[i]) == LOW) {
+      digitalWrite(ledPins[i], HIGH); // Liga o LED
+    } else {
+      digitalWrite(ledPins[i], LOW);  // Desliga o LED
+    }
+    
+  }
+}
