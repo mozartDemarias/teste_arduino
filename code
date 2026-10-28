@@ -1,193 +1,160 @@
-import time
-import random
-import board
-import busio
-import adafruit_ssd1306
-from PIL import Image, ImageDraw, ImageFont
-from gpiozero import Button, LED, TonalBuzzer
-from gpiozero.tones import Tone
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
 
-# ---------------- CONFIGURAÇÃO DO HARDWARE ----------------
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
+#define OLED_RESET -1
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
-# Ecrã OLED (I2C)
-i2c = busio.I2C(board.SCL, board.SDA)
-disp = adafruit_ssd1306.SSD1306_I2C(128, 64, i2c)
-disp.fill(0)
-disp.show()
+// Pinos
+const int ledPins[] = {9, 8, 7, 6}; // Vermelho, Azul, Amarelo, Verde
+const int botPins[] = {5, 4, 3, 2}; // Vermelho, Azul, Amarelo, Verde
 
-# Pinos (Numeração GPIO/BCM conforme mapeado anteriormente)
-leds = [LED(18), LED(23), LED(24), LED(25)]
-# bounce_time=0.05 substitui o delay(150) do Arduino (anti-bouncing)
-buttons = [
-    Button(17, pull_up=True, bounce_time=0.05),
-    Button(27, pull_up=True, bounce_time=0.05),
-    Button(22, pull_up=True, bounce_time=0.05),
-    Button(5, pull_up=True, bounce_time=0.05)
-]
-buzzer = TonalBuzzer(26)
+// Variáveis do Jogo
+int sequencia[100];
+int nivel = 0;
+int jogadorAtual = 1;
 
-# Frequências sonoras para cada botão
-tones = [300, 400, 500, 600]
+void setup() {
+  for (int i = 0; i < 4; i++) {
+    pinMode(ledPins[i], OUTPUT);
+    pinMode(botPins[i], INPUT_PULLUP);
+  }
 
-# ---------------- LÓGICA DO JOGO ----------------
+  // Inicializa o Display OLED
+  if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { 
+    for(;;); // Se o display falhar, o código para aqui
+  }
+  
+  display.setTextColor(SSD1306_WHITE);
+  randomSeed(analogRead(A0)); // Usa ruído do pino A0 vazio para gerar números aleatórios
+}
 
-MAX_LEVEL = 10
-scores = [0, 0, 0, 0]
-current_player = 0
-game_sequence = []
-font = ImageFont.load_default()
+void loop() {
+  telaInicial();
+  telaVezJogador();
+  
+  nivel = 0;
+  bool perdeu = false;
 
-def atualizar_display(linha1, linha2, linha3=""):
-    """Função auxiliar para escrever no ecrã OLED."""
-    image = Image.new("1", (disp.width, disp.height))
-    draw = ImageDraw.Draw(image)
+  // Loop da rodada do jogador atual
+  while (!perdeu) {
+    sequencia[nivel] = random(0, 4); // Sorteia o próximo passo (0 a 3)
+    nivel++;
     
-    draw.text((0, 0), linha1, font=font, fill=255)
-    draw.text((0, 20), linha2, font=font, fill=255)
-    draw.text((0, 40), linha3, font=font, fill=255)
-    
-    disp.image(image)
-    disp.show()
+    tocarSequencia();
+    perdeu = !lerJogada(); 
+  }
 
-def tocar_som_luz(indice, duracao):
-    """Acende o LED e toca o som correspondente."""
-    leds[indice].on()
-    buzzer.play(Tone(frequency=tones[indice]))
-    time.sleep(duracao)
-    leds[indice].off()
-    buzzer.stop()
+  // Quando o jogador perde
+  telaFimDeJogo();
+  delay(3000);
+  
+  // Passa para o próximo jogador (1 a 4)
+  jogadorAtual++;
+  if (jogadorAtual > 4) {
+    jogadorAtual = 1;
+  }
+}
 
-def esperar_inicio():
-    """Aguarda que qualquer botão seja premido para iniciar."""
-    atualizar_display("GENIOS", "Aperte QUALQUER", "botao p/ comecar")
-    
-    pressed_idx = -1
-    while pressed_idx == -1:
-        for i, btn in enumerate(buttons):
-            if btn.is_pressed:
-                pressed_idx = i
-                break
-        time.sleep(0.01)
-    
-    # Feedback do botão escolhido
-    tocar_som_luz(pressed_idx, 0.5)
-    
-    # Aguarda o jogador largar o botão
-    while buttons[pressed_idx].is_pressed:
-        time.sleep(0.01)
-        
-    disp.fill(0)
-    disp.show()
-    time.sleep(1)
+void telaInicial() {
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setCursor(0, 20);
+  display.println(F(" Aperte qualquer"));
+  display.println(F(" botao para"));
+  display.println(F(" comecar o jogo"));
+  display.display();
 
-def mostrar_vencedor():
-    global current_player, scores, game_sequence
-    max_score = max(scores)
-    
-    # Verifica empate
-    vencedores = [i for i, score in enumerate(scores) if score == max_score and score > 0]
-    
-    if len(vencedores) > 1 or max_score == 0:
-        atualizar_display("FIM DE JOGO!", "EMPATE!", f"Maior Pontuacao: {max_score}")
-    else:
-        atualizar_display("FIM DE JOGO!", f"VENCEU: JOGADOR {vencedores[0] + 1}", f"Pontuacao: {max_score}")
-        
-    time.sleep(8)
-    
-    # Reinicia o jogo
-    current_player = 0
-    scores = [0, 0, 0, 0]
-    game_sequence = []
-    esperar_inicio()
+  // Fica preso aqui até um botão ser pressionado
+  bool iniciou = false;
+  while (!iniciou) {
+    for (int i = 0; i < 4; i++) {
+      if (digitalRead(botPins[i]) == LOW) {
+        iniciou = true;
+        // Pisca o LED do botão pressionado como feedback de início
+        digitalWrite(ledPins[i], HIGH);
+        while(digitalRead(botPins[i]) == LOW); // Espera soltar o botão
+        digitalWrite(ledPins[i], LOW);
+        delay(500);
+        break;
+      }
+    }
+  }
+}
 
-def eliminar_jogador():
-    global current_player, game_sequence
-    buzzer.play(Tone(frequency=150))
+void telaVezJogador() {
+  display.clearDisplay();
+  display.setTextSize(2);
+  display.setCursor(10, 20);
+  display.print(F("JOGADOR "));
+  display.println(jogadorAtual);
+  display.display();
+  delay(2000);
+}
+
+void telaFimDeJogo() {
+  display.clearDisplay();
+  display.setTextSize(2);
+  display.setCursor(0, 10);
+  display.println(F("ERROU!"));
+  
+  display.setTextSize(1);
+  display.setCursor(0, 40);
+  display.print(F("Pontos do Jogador "));
+  display.print(jogadorAtual);
+  display.print(F(": "));
+  display.println(nivel - 1);
+  display.display();
+
+  // Efeito visual de erro: pisca todos os LEDs rapidamente
+  for (int piscadas = 0; piscadas < 3; piscadas++) {
+    for (int i = 0; i < 4; i++) digitalWrite(ledPins[i], HIGH);
+    delay(150);
+    for (int i = 0; i < 4; i++) digitalWrite(ledPins[i], LOW);
+    delay(150);
+  }
+}
+
+void tocarSequencia() {
+  for (int i = 0; i < nivel; i++) {
+    int pinoCorrente = sequencia[i];
+    digitalWrite(ledPins[pinoCorrente], HIGH);
+    delay(400);
+    digitalWrite(ledPins[pinoCorrente], LOW);
+    delay(200);
+  }
+}
+
+bool lerJogada() {
+  for (int i = 0; i < nivel; i++) {
+    int botaoPressionado = -1;
     
-    # Piscar todos os LEDs 3 vezes
-    for _ in range(3):
-        for led in leds: led.on()
-        time.sleep(0.2)
-        for led in leds: led.off()
-        time.sleep(0.2)
-        
-    buzzer.stop()
-    
-    atualizar_display(f"JOGADOR {current_player + 1}", "ELIMINADO")
-    time.sleep(3)
-    
-    current_player += 1
-    game_sequence = []
+    // Espera até que um botão seja apertado
+    while (botaoPressionado == -1) {
+      for (int b = 0; b < 4; b++) {
+        if (digitalRead(botPins[b]) == LOW) {
+          botaoPressionado = b;
+          
+          // Feedback de luz enquanto o botão está pressionado
+          digitalWrite(ledPins[b], HIGH);
+          
+          // Espera o jogador soltar o botão para não registrar duas vezes
+          while (digitalRead(botPins[b]) == LOW) { delay(10); } 
+          
+          digitalWrite(ledPins[b], LOW);
+          delay(50);
+          break;
+        }
+      }
+    }
 
-def ler_jogador():
-    """Lê a sequência introduzida pelo jogador e valida."""
-    for expected_color in game_sequence:
-        pressed = False
-        while not pressed:
-            for i, btn in enumerate(buttons):
-                if btn.is_pressed:
-                    tocar_som_luz(i, 0.3)
-                    
-                    # Aguarda largar o botão
-                    while btn.is_pressed:
-                        time.sleep(0.01)
-                        
-                    if i == expected_color:
-                        pressed = True
-                        break
-                    else:
-                        return False # Errou
-            time.sleep(0.01)
-    return True
-
-# ---------------- LOOP PRINCIPAL ----------------
-
-esperar_inicio()
-
-try:
-    while True:
-        if current_player > 3:
-            mostrar_vencedor()
-            continue
-            
-        if len(game_sequence) == 0:
-            game_sequence.append(random.randint(0, 3))
-            atualizar_display(f"VEZ DO JOGADOR {current_player + 1}", f"Pts: {scores[current_player]}", "PREPARE-SE!")
-            time.sleep(1.5)
-        else:
-            game_sequence.append(random.randint(0, 3))
-            
-        atualizar_display(f"VEZ DO JOGADOR {current_player + 1}", f"Pts: {scores[current_player]}", "SUA VEZ!")
-        
-        # Reproduz a sequência
-        for color in game_sequence:
-            tocar_som_luz(color, 0.4)
-            time.sleep(0.2)
-            
-        # Verifica a resposta
-        if not ler_jogador():
-            eliminar_jogador()
-        else:
-            scores[current_player] = len(game_sequence)
-            
-            if len(game_sequence) == MAX_LEVEL:
-                atualizar_display(f"VEZ DO JOGADOR {current_player + 1}", "COMPLETOU!")
-                buzzer.play(Tone(frequency=800))
-                time.sleep(0.2)
-                buzzer.play(Tone(frequency=1000))
-                time.sleep(0.4)
-                buzzer.stop()
-                time.sleep(2)
-                
-                current_player += 1
-                game_sequence = []
-            else:
-                atualizar_display(f"VEZ DO JOGADOR {current_player + 1}", f"Pts: {scores[current_player]}", "CORRETO!")
-                time.sleep(0.8)
-
-except KeyboardInterrupt:
-    # Desliga tudo ao fechar o programa (Ctrl+C)
-    disp.fill(0)
-    disp.show()
-    for led in leds: led.off()
-    buzzer.stop()
+    // Se apertou o botão errado, retorna falso (perdeu)
+    if (botaoPressionado != sequencia[i]) {
+      return false; 
+    }
+  }
+  delay(500); // Pausa antes de começar a próxima sequência
+  return true; 
+}
