@@ -1,27 +1,54 @@
-// Pinos dos Botões (Vermelho, Azul, Amarelo, Verde)
-int buttonPins[] = {5, 4, 3, 2};  
+// Pinos dos LEDs
+int ledVermelho = 9;
+int ledAzul = 8;
+int ledAmarelo = 7;
+int ledVerde = 6;
 
-// Pinos dos LEDs (Vermelho, Azul, Amarelo, Verde)
-int ledPins[] = {13, 12, 11, 10}; 
+// Pinos dos Botões
+int botVermelho = 5;
+int botAzul = 4;
+int botAmarelo = 3;
+int botVerde = 2;
 
 void setup() {
-  // Configura cada pino
-  for (int i = 0; i < 4; i++) {
-    pinMode(buttonPins[i], INPUT_PULLUP); // Botões ativam com LOW
-    pinMode(ledPins[i], OUTPUT);          // LEDs ativam com HIGH
-  }
+  // Configura LEDs como saída
+  pinMode(ledVermelho, OUTPUT);
+  pinMode(ledAzul, OUTPUT);
+  pinMode(ledAmarelo, OUTPUT);
+  pinMode(ledVerde, OUTPUT);
+
+  // Configura Botões como entrada com resistor interno (INPUT_PULLUP)
+  // Quando não pressionado = HIGH. Quando pressionado = LOW.
+  pinMode(botVermelho, INPUT_PULLUP);
+  pinMode(botAzul, INPUT_PULLUP);
+  pinMode(botAmarelo, INPUT_PULLUP);
+  pinMode(botVerde, INPUT_PULLUP);
 }
 
 void loop() {
-  // Lê os 4 botões repetidamente
-  for (int i = 0; i < 4; i++) {
-    
-    // Como usamos INPUT_PULLUP, LOW significa que o botão está apertado
-    if (digitalRead(buttonPins[i]) == LOW) {
-      digitalWrite(ledPins[i], HIGH); // Liga o LED
-    } else {
-      digitalWrite(ledPins[i], LOW);  // Desliga o LED
-    }
-    
+  // Lê o estado de cada botão e acende o LED correspondente
+  
+  if (digitalRead(botVermelho) == LOW) {
+    digitalWrite(ledVermelho, HIGH);
+  } else {
+    digitalWrite(ledVermelho, LOW);
+  }
+
+  if (digitalRead(botAzul) == LOW) {
+    digitalWrite(ledAzul, HIGH);
+  } else {
+    digitalWrite(ledAzul, LOW);
+  }
+
+  if (digitalRead(botAmarelo) == LOW) {
+    digitalWrite(ledAmarelo, HIGH);
+  } else {
+    digitalWrite(ledAmarelo, LOW);
+  }
+
+  if (digitalRead(botVerde) == LOW) {
+    digitalWrite(ledVerde, HIGH);
+  } else {
+    digitalWrite(ledVerde, LOW);
   }
 }
